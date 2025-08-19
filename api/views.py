@@ -1,4 +1,3 @@
-from django.conf import settings
 from rest_framework import generics, status
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
@@ -24,30 +23,31 @@ class EssaySubmissionCreateAPIView(generics.CreateAPIView):
     serializer_class = EssaySubmissionSerializer
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
-    parser_classes = [MultiPartParser, FormParser, JSONParser] 
 
     def perform_create(self, serializer):
         submission = serializer.save(user=self.request.user)
-        
-        # URL do Webhook ATUALIZADA para a versão final
-        n8n_webhook_url = "https://funpar.app.n8n.cloud/webhook/corrigir-redacao"
+        n8n_webhook_url = "https://n8n-n8n-start.eswufe.easypanel.host/webhook-test/04518996-960e-460b-b6a7-94e5ad06581b"
+
+        # Lógica revertida para usar o endereço local
+        file_url = None
+        if submission.submitted_file:
+            file_url = self.request.build_absolute_uri(submission.submitted_file.url)
 
         payload = {
             "submission_id": submission.id,
             "submitted_text": submission.submitted_text,
-            "file_url": self.request.build_absolute_uri(submission.submitted_file.url) if submission.submitted_file else None,
+            "file_url": file_url,
         }
 
         try:
-            response = requests.post(n8n_webhook_url, json=payload, timeout=10)
-            response.raise_for_status()
+            requests.post(n8n_webhook_url, json=payload, timeout=10)
             submission.status = 'processing'
             submission.save()
-            print(f"Redação ID {submission.id} enviada e CONFIRMADA pelo n8n.")
+            print(f"Redação ID {submission.id} enviada com sucesso para o n8n.")
         except requests.RequestException as e:
+            print(f"ERRO ao enviar para o n8n: {e}")
             submission.status = 'error'
             submission.save()
-            print(f"ERRO DE REDE/CONEXÃO ao enviar para o n8n: {e}")
 
 # --- Views para o Histórico do Usuário ---
 class HistoryListAPIView(generics.ListAPIView):

@@ -55,3 +55,6 @@ class ChangePasswordSerializer(serializers.Serializer):
         if not user.check_password(value):
             raise serializers.ValidationError("Sua senha antiga foi digitada incorretamente. Por favor, tente novamente.")
         return value
+    
+
+     

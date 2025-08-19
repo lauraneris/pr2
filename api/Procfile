@@ -1,0 +1,1 @@
+web: gunicorn redabot_backend.wsgi --log-file -
