@@ -26,7 +26,7 @@ class EssaySubmissionCreateAPIView(generics.CreateAPIView):
 
     def perform_create(self, serializer):
         submission = serializer.save(user=self.request.user)
-        n8n_webhook_url = "https://n8n-n8n-start.eswufe.easypanel.host/webhook-test/04518996-960e-460b-b6a7-94e5ad06581b"
+        n8n_webhook_url = " https://n8n-n8n-start.eswufe.easypanel.host/webhook/d3aadfb9-3482-428e-9b2f-6bab1d85c088"
 
         # Lógica revertida para usar o endereço local
         file_url = None
