@@ -14,23 +14,20 @@ from pathlib import Path
 import os
 import dj_database_url
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
-
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-4f(r4xo!7(&x2_7tzt1mn@&tv#*rn1muk@v8__yiwxr^iiy*(4'
+SECRET_KEY = os.environ.get(
+    'SECRET_KEY', 
+    'django-insecure-4f(r4xo!7(&x2_7tzt1mn@&tv#*rn1muk@v8__yiwxr^iiy*(4'
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+os.environ.get('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = ['*']
+allowed_hosts_str = os.environ.get('ALLOWED_HOSTS', 'studyratsfrontend.vercel.app')
+ALLOWED_HOSTS = [host.strip() for host in allowed_hosts_str.split(',')]
 
-
-# Application definition
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -77,9 +74,6 @@ TEMPLATES = [
 WSGI_APPLICATION = 'redabot_backend.wsgi.application'
 
 
-# Database
-# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
-
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -87,8 +81,6 @@ DATABASES = {
     }
 }
 
-# Verifica se a variável DATABASE_URL existe (ambiente de produção como o Render)
-# e substitui a configuração padrão se ela existir.
 database_url = os.environ.get('DATABASE_URL')
 if database_url:
     DATABASES['default'] = dj_database_url.parse(database_url)
@@ -136,7 +128,13 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
-CORS_ALLOWED_ORIGIN_REGEXES = True
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+"studyratsfrontend.vercel.app",
+]
+
+CORS_ALLOW_CREDENTIALS = True
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (

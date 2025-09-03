@@ -1,22 +1,49 @@
+import requests
+import threading  
+from django.contrib.auth.models import User
 from rest_framework import generics, status
 from rest_framework.parsers import FormParser, MultiPartParser
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
-import requests
-from .serializers import ChangePasswordSerializer
-from rest_framework.parsers import MultiPartParser, FormParser, JSONParser 
-from django.contrib.auth.models import User
-from .serializers import UserSerializer
-from rest_framework.permissions import AllowAny
-from .models import EssaySubmission, EssayTheme, Correction, CorrectionCriterion
-from .serializers import (EssaySubmissionSerializer, EssayThemeSerializer,
-                          SubmissionHistorySerializer)
 
-# --- Views para Temas ---
+from .models import EssaySubmission, EssayTheme, Correction, CorrectionCriterion
+from .serializers import (
+    EssaySubmissionSerializer, 
+    EssayThemeSerializer,
+    SubmissionHistorySerializer,
+    UserSerializer,
+    ChangePasswordSerializer
+)
+
+
+def send_submission_to_webhook(submission, request):
+    n8n_webhook_url = "https://n8n-n8n-start.eswufe.easypanel.host/webhook/d3aadfb9-3482-428e-9b2f-6bab1d85c088"
+
+    file_url = None
+    if submission.submitted_file:
+        file_url = request.build_absolute_uri(submission.submitted_file.url)
+
+    payload = {
+        "submission_id": submission.id,
+        "submitted_text": submission.submitted_text,
+        "file_url": file_url,
+    }
+
+    try:
+        requests.post(n8n_webhook_url, json=payload, timeout=20)
+        print(f"THREAD: Redação ID {submission.id} enviada com sucesso para o n8n.")
+    except requests.RequestException as e:
+        print(f"THREAD ERRO: Falha ao enviar Redação ID {submission.id} para o n8n: {e}")
+        submission.status = 'error'
+        submission.save()
+
+
+# views para os temas de redação e subimissão de redações 
 class EssayThemeListAPIView(generics.ListAPIView):
     queryset = EssayTheme.objects.all().order_by('-created_at')
     serializer_class = EssayThemeSerializer
+
 
 class EssaySubmissionCreateAPIView(generics.CreateAPIView):
     queryset = EssaySubmission.objects.all()
@@ -25,37 +52,27 @@ class EssaySubmissionCreateAPIView(generics.CreateAPIView):
     parser_classes = [MultiPartParser, FormParser]
 
     def perform_create(self, serializer):
-        submission = serializer.save(user=self.request.user)
-        n8n_webhook_url = " https://n8n-n8n-start.eswufe.easypanel.host/webhook/d3aadfb9-3482-428e-9b2f-6bab1d85c088"
+        # salvando redação
+        submission = serializer.save(user=self.request.user, status='processing')
 
-        # Lógica revertida para usar o endereço local
-        file_url = None
-        if submission.submitted_file:
-            file_url = self.request.build_absolute_uri(submission.submitted_file.url)
+        # thread
+        thread = threading.Thread(
+            target=send_submission_to_webhook, 
+            args=(submission, self.request)
+        )
+        thread.start() # executada em segundo plano
 
-        payload = {
-            "submission_id": submission.id,
-            "submitted_text": submission.submitted_text,
-            "file_url": file_url,
-        }
+        print(f"Resposta imediata para a Redação ID {submission.id}. Webhook a executar em background.")
 
-        try:
-            requests.post(n8n_webhook_url, json=payload, timeout=10)
-            submission.status = 'processing'
-            submission.save()
-            print(f"Redação ID {submission.id} enviada com sucesso para o n8n.")
-        except requests.RequestException as e:
-            print(f"ERRO ao enviar para o n8n: {e}")
-            submission.status = 'error'
-            submission.save()
 
-# --- Views para o Histórico do Usuário ---
+# histórico do usuário
 class HistoryListAPIView(generics.ListAPIView):
     serializer_class = SubmissionHistorySerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         return EssaySubmission.objects.filter(user=self.request.user).order_by('-submission_date')
+
 
 class HistoryDetailAPIView(generics.RetrieveAPIView):
     serializer_class = SubmissionHistorySerializer
@@ -64,19 +81,23 @@ class HistoryDetailAPIView(generics.RetrieveAPIView):
     def get_queryset(self):
         return EssaySubmission.objects.filter(user=self.request.user)
 
-# --- View para o Webhook do n8n ---
+
+# view para o n8n versão webhook
 class N8nCorrectionWebhookAPIView(APIView):
     authentication_classes = []
     permission_classes = []
 
     def post(self, request, *args, **kwargs):
-        # ... (código do webhook que finalizaremos depois) ...
+        # (código do webhook faltante) - processar a correção recebida pelo n8n
         return Response(status=status.HTTP_200_OK)
-    
+
+
+# utilizador e oAuth
 class UserCreateAPIView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [AllowAny]
+
 
 class ChangePasswordView(generics.UpdateAPIView):
     serializer_class = ChangePasswordSerializer
@@ -96,4 +117,3 @@ class ChangePasswordView(generics.UpdateAPIView):
             return Response({"message": "Senha alterada com sucesso!"}, status=status.HTTP_200_OK)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
