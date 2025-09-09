@@ -1,6 +1,10 @@
 from rest_framework import serializers
 from .models import EssayTheme, EssaySubmission, Correction, CorrectionCriterion
 from django.contrib.auth.models import User
+from django.contrib.auth.forms import PasswordResetForm, SetPasswordForm
+from django.conf import settings
+from django.utils.http import urlsafe_base64_decode
+from django.contrib.auth.tokens import default_token_generator
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -55,6 +59,57 @@ class ChangePasswordSerializer(serializers.Serializer):
         if not user.check_password(value):
             raise serializers.ValidationError("Sua senha antiga foi digitada incorretamente. Por favor, tente novamente.")
         return value
+    
+class PasswordResetRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+    def validate_email(self, value):
+        self.reset_form = PasswordResetForm(data={'email': value})
+        if not self.reset_form.is_valid():
+            raise serializers.ValidationError('Nenhum utilizador encontrado com este e-mail.')
+        return value
+
+    def save(self):
+        request = self.context.get('request')
+        opts = {
+            'use_https': request.is_secure(),
+            'from_email': getattr(settings, 'DEFAULT_FROM_EMAIL'),
+            'email_template_name': 'registration/password_reset_email.html',
+            'request': request,
+            # Domínio do frontend para construir o link de reset
+            'domain_override': settings.FRONTEND_URL.split('//')[-1]
+        }
+        self.reset_form.save(**opts)
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    new_password1 = serializers.CharField(max_length=128, write_only=True)
+    new_password2 = serializers.CharField(max_length=128, write_only=True)
+    uidb64 = serializers.CharField()
+    token = serializers.CharField()
+
+    def validate(self, attrs):
+        try:
+            uid = urlsafe_base64_decode(attrs['uidb64']).decode()
+            self.user = User.objects.get(pk=uid)
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+            raise serializers.ValidationError('Link inválido.')
+
+        if not default_token_generator.check_token(self.user, attrs['token']):
+            raise serializers.ValidationError('Link inválido ou expirado.')
+
+        self.set_password_form = SetPasswordForm(
+            user=self.user, data=attrs
+        )
+        if not self.set_password_form.is_valid():
+            raise serializers.ValidationError(self.set_password_form.errors)
+            
+        return attrs
+
+    def save(self):
+        self.set_password_form.save()
+    
+
     
 
      

@@ -13,7 +13,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 from pathlib import Path
 import os
 import dj_database_url
-
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
@@ -131,7 +131,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-"studyratsfrontend.vercel.app",
+    "https://studyratsfrontend.vercel.app"
 ]
 
 CORS_ALLOW_CREDENTIALS = True
@@ -145,3 +145,8 @@ REST_FRAMEWORK = {
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
+
+allowed_hosts_str = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,studyratsfrontend.vercel.app')
+ALLOWED_HOSTS = [host.strip() for host in allowed_hosts_str.split(',')]

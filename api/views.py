@@ -6,8 +6,10 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
-
+from .serializers import PasswordResetRequestSerializer, PasswordResetConfirmSerializer
 from .models import EssaySubmission, EssayTheme, Correction, CorrectionCriterion
+from .serializers import PasswordResetRequestSerializer, PasswordResetConfirmSerializer
+from rest_framework.permissions import AllowAny
 from .serializers import (
     EssaySubmissionSerializer, 
     EssayThemeSerializer,
@@ -117,3 +119,44 @@ class ChangePasswordView(generics.UpdateAPIView):
             return Response({"message": "Senha alterada com sucesso!"}, status=status.HTTP_200_OK)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+class PasswordResetRequestView(generics.GenericAPIView):
+    permission_classes = [AllowAny]
+    serializer_class = PasswordResetRequestSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(
+            {"message": "Se existir uma conta com o e-mail fornecido, enviaremos um link para redefinir a senha."},
+            status=status.HTTP_200_OK
+        )
+ 
+
+    class PasswordResetRequestView(generics.GenericAPIView):
+     permission_classes = [AllowAny]
+     serializer_class = PasswordResetRequestSerializer
+
+     def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(
+            {"message": "Se existir uma conta com o e-mail fornecido, enviaremos um link para redefinir a senha."},
+            status=status.HTTP_200_OK
+        )
+
+
+class PasswordResetConfirmView(generics.GenericAPIView):
+    permission_classes = [AllowAny]
+    serializer_class = PasswordResetConfirmSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(
+            {"message": "Senha redefinida com sucesso."},
+            status=status.HTTP_200_OK
+        )

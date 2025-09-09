@@ -5,6 +5,7 @@ from .views import HistoryListAPIView, HistoryDetailAPIView
 from .views import N8nCorrectionWebhookAPIView
 from .views import UserCreateAPIView
 from .views import ChangePasswordView
+from .views import PasswordResetRequestView, PasswordResetConfirmView #
 
 
 urlpatterns = [
@@ -15,4 +16,6 @@ urlpatterns = [
     path('webhooks/n8n/correction-complete/', N8nCorrectionWebhookAPIView.as_view(), name='webhook-n8n-correction'),
     path('register/', UserCreateAPIView.as_view(), name='register'),
     path('change-password/', ChangePasswordView.as_view(), name='change-password'),
+    path('password-reset/', PasswordResetRequestView.as_view(), name='password-reset-request'),
+    path('password-reset/confirm/', PasswordResetConfirmView.as_view(), name='password-reset-confirm'),
 ]
