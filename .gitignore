@@ -1,0 +1,16 @@
+# Ambiente Virtual (ignora a pasta inteira)
+venv/
+
+# Ficheiros de Cache do Python
+__pycache__/
+*.pyc
+
+# Ficheiro da Base de Dados de desenvolvimento
+db.sqlite3
+
+# Ficheiros de credenciais e segredos
+firebase-credentials.json
+.env.local
+
+# Ficheiros do sistema macOS
+.DS_Store

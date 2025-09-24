@@ -37,7 +37,7 @@ class StuartCoinTransaction(models.Model):
     def __str__(self):
         return f"{self.transaction_type} de {self.amount} SC para {self.user_profile.user.username} - {self.description}"
 
-# --- Modelos que já existiam ---
+
 class EssayTheme(models.Model):
     title = models.CharField(max_length=255)
     motivational_text = models.TextField()
