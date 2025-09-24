@@ -1,6 +1,43 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
+class UserProfile(models.Model):
+    class Role(models.TextChoices):
+        STUDENT = 'student', 'Aluno'
+        TEACHER = 'teacher', 'Professor'
+        ADMIN = 'admin', 'Admin'
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    role = models.CharField(max_length=10, choices=Role.choices, default=Role.STUDENT)
+    stuart_coins_balance = models.PositiveIntegerField(default=10)
+
+    def __str__(self):
+        return f"Perfil de {self.user.username} - Saldo: {self.stuart_coins_balance} SC"
+
+# Sinal para criar um UserProfile automaticamente quando um User é criado
+@receiver(post_save, sender=User)
+def create_user_profile(sender, instance, created, **kwargs):
+    if created:
+        UserProfile.objects.create(user=instance)
+
+# 2. DEFINIÇÃO DO STUARTCOINTRANSACTION (ESTAVA EM FALTA)
+class StuartCoinTransaction(models.Model):
+    class TransactionType(models.TextChoices):
+        CREDIT = 'credit', 'Crédito'
+        DEBIT = 'debit', 'Débito'
+
+    user_profile = models.ForeignKey(UserProfile, on_delete=models.CASCADE, related_name='transactions')
+    transaction_type = models.CharField(max_length=6, choices=TransactionType.choices)
+    amount = models.PositiveIntegerField()
+    description = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.transaction_type} de {self.amount} SC para {self.user_profile.user.username} - {self.description}"
+
+# --- Modelos que já existiam ---
 class EssayTheme(models.Model):
     title = models.CharField(max_length=255)
     motivational_text = models.TextField()
@@ -18,7 +55,6 @@ class EssaySubmission(models.Model):
         ('completed', 'Concluído'),
         ('error', 'Erro'),
     ]
-
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     submitted_text = models.TextField(blank=True, null=True)
     submitted_file = models.FileField(upload_to='uploads/', blank=True, null=True)

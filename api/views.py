@@ -1,5 +1,7 @@
 import requests
 import threading  
+from django.conf import settings
+from django.db import transaction
 from django.contrib.auth.models import User
 from rest_framework import generics, status
 from rest_framework.parsers import FormParser, MultiPartParser
@@ -8,8 +10,6 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from .serializers import PasswordResetRequestSerializer, PasswordResetConfirmSerializer
 from .models import EssaySubmission, EssayTheme, Correction, CorrectionCriterion
-from .serializers import PasswordResetRequestSerializer, PasswordResetConfirmSerializer
-from rest_framework.permissions import AllowAny
 from .serializers import (
     EssaySubmissionSerializer, 
     EssayThemeSerializer,
@@ -20,7 +20,7 @@ from .serializers import (
 
 
 def send_submission_to_webhook(submission, request):
-    n8n_webhook_url = "https://n8n-n8n-start.eswufe.easypanel.host/webhook/d3aadfb9-3482-428e-9b2f-6bab1d85c088"
+    n8n_webhook_url = "https://n8n-n8n-start.eswufe.easypanel.host/webhook-test/d3aadfb9-3482-428e-9b2f-6bab1d85c088"
 
     file_url = None
     if submission.submitted_file:
@@ -87,11 +87,60 @@ class HistoryDetailAPIView(generics.RetrieveAPIView):
 # view para o n8n versão webhook
 class N8nCorrectionWebhookAPIView(APIView):
     authentication_classes = []
-    permission_classes = []
+    permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
-        # (código do webhook faltante) - processar a correção recebida pelo n8n
-        return Response(status=status.HTTP_200_OK)
+        # 1. Verificação de Segurança
+        secret_token = request.headers.get('X-N8N-Api-Key')
+        if secret_token != settings.N8N_WEBHOOK_SECRET:
+            return Response({"error": "Acesso não autorizado."}, status=status.HTTP_403_FORBIDDEN)
+
+        data = request.data
+        submission_id = data.get('submission_id')
+        
+        if not submission_id:
+            return Response({"error": "submission_id é obrigatório."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # 2. Encontrar a Submissão e garantir que está a ser processada
+            submission = EssaySubmission.objects.get(id=submission_id, status='processing')
+        except EssaySubmission.DoesNotExist:
+            return Response({"error": "Submissão não encontrada ou já processada."}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            # 3. Usar uma transação para garantir a integridade dos dados
+            with transaction.atomic():
+                # Criar o objeto principal da Correção
+                correction = Correction.objects.create(
+                    submission=submission,
+                    overall_score=data.get('overall_score', 0),
+                    general_comment=data.get('general_comment', ''),
+                    positive_points=data.get('positive_points', [])
+                )
+
+                # Criar os objetos de Critérios de Correção
+                criteria_data = data.get('criteria', [])
+                for criterion in criteria_data:
+                    CorrectionCriterion.objects.create(
+                        correction=correction,
+                        name=criterion.get('name', 'Critério'),
+                        score=criterion.get('score', 0),
+                        max_score=criterion.get('max_score', 200),
+                        feedback_text=criterion.get('feedback_text', ''),
+                        is_perfect=criterion.get('is_perfect', False)
+                    )
+
+                # 4. Atualizar o status da submissão para concluído
+                submission.status = 'completed'
+                submission.save()
+
+        except Exception as e:
+            # Em caso de erro, marcar a submissão com erro para revisão manual
+            submission.status = 'error'
+            submission.save()
+            return Response({"error": f"Erro ao processar a correção: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response({"message": "Correção processada com sucesso."}, status=status.HTTP_200_OK)
 
 
 # utilizador e oAuth
@@ -120,25 +169,12 @@ class ChangePasswordView(generics.UpdateAPIView):
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
+
 class PasswordResetRequestView(generics.GenericAPIView):
     permission_classes = [AllowAny]
     serializer_class = PasswordResetRequestSerializer
 
     def post(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(
-            {"message": "Se existir uma conta com o e-mail fornecido, enviaremos um link para redefinir a senha."},
-            status=status.HTTP_200_OK
-        )
- 
-
-    class PasswordResetRequestView(generics.GenericAPIView):
-     permission_classes = [AllowAny]
-     serializer_class = PasswordResetRequestSerializer
-
-     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
@@ -160,3 +196,12 @@ class PasswordResetConfirmView(generics.GenericAPIView):
             {"message": "Senha redefinida com sucesso."},
             status=status.HTTP_200_OK
         )
+
+
+class UserProfileDetailView(generics.RetrieveAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self):
+        return self.request.user

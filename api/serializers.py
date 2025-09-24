@@ -1,16 +1,35 @@
 from rest_framework import serializers
-from .models import EssayTheme, EssaySubmission, Correction, CorrectionCriterion
+from .models import (
+    EssayTheme, EssaySubmission, Correction, CorrectionCriterion,
+    UserProfile, StuartCoinTransaction
+)
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import PasswordResetForm, SetPasswordForm
 from django.conf import settings
 from django.utils.http import urlsafe_base64_decode
 from django.contrib.auth.tokens import default_token_generator
 
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserProfile
+        fields = ['role', 'stuart_coins_balance']
+
+
 class UserSerializer(serializers.ModelSerializer):
+    profile = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'password']
+        fields = ['id', 'username', 'email', 'password', 'profile']
         extra_kwargs = {'password': {'write_only': True}}
+
+    def get_profile(self, obj):
+        try:
+            profile = obj.profile
+            return UserProfileSerializer(profile).data
+        except UserProfile.DoesNotExist:
+            return None
 
     def create(self, validated_data):
         user = User.objects.create_user(
@@ -20,10 +39,12 @@ class UserSerializer(serializers.ModelSerializer):
         )
         return user
 
+
 class CorrectionCriterionSerializer(serializers.ModelSerializer):
     class Meta:
         model = CorrectionCriterion
         fields = ['name', 'score', 'max_score', 'feedback_text', 'is_perfect']
+
 
 class CorrectionSerializer(serializers.ModelSerializer):
     criteria = CorrectionCriterionSerializer(many=True, read_only=True)
@@ -32,10 +53,12 @@ class CorrectionSerializer(serializers.ModelSerializer):
         model = Correction
         fields = ['overall_score', 'general_comment', 'positive_points', 'corrected_at', 'criteria']
 
+
 class EssayThemeSerializer(serializers.ModelSerializer):
     class Meta:
         model = EssayTheme
         fields = ['id', 'title', 'motivational_text', 'category', 'image_url', 'created_at']
+
 
 class EssaySubmissionSerializer(serializers.ModelSerializer):
     class Meta:
@@ -43,12 +66,14 @@ class EssaySubmissionSerializer(serializers.ModelSerializer):
         fields = ['id', 'user', 'submitted_text', 'submitted_file', 'status', 'submission_date']
         read_only_fields = ['user', 'status', 'submission_date']
 
+
 class SubmissionHistorySerializer(serializers.ModelSerializer):
     correction = CorrectionSerializer(read_only=True, required=False)
 
     class Meta:
         model = EssaySubmission
         fields = ['id', 'submission_date', 'status', 'correction']
+
 
 class ChangePasswordSerializer(serializers.Serializer):
     old_password = serializers.CharField(required=True)
@@ -59,7 +84,8 @@ class ChangePasswordSerializer(serializers.Serializer):
         if not user.check_password(value):
             raise serializers.ValidationError("Sua senha antiga foi digitada incorretamente. Por favor, tente novamente.")
         return value
-    
+
+
 class PasswordResetRequestSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
@@ -73,10 +99,9 @@ class PasswordResetRequestSerializer(serializers.Serializer):
         request = self.context.get('request')
         opts = {
             'use_https': request.is_secure(),
-            'from_email': getattr(settings, 'DEFAULT_FROM_EMAIL'),
+            'from_email': getattr(settings, 'DEFAULT_FROM_EMAIL', None),
             'email_template_name': 'registration/password_reset_email.html',
             'request': request,
-            # Domínio do frontend para construir o link de reset
             'domain_override': settings.FRONTEND_URL.split('//')[-1]
         }
         self.reset_form.save(**opts)
@@ -98,18 +123,11 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
         if not default_token_generator.check_token(self.user, attrs['token']):
             raise serializers.ValidationError('Link inválido ou expirado.')
 
-        self.set_password_form = SetPasswordForm(
-            user=self.user, data=attrs
-        )
+        self.set_password_form = SetPasswordForm(user=self.user, data=attrs)
         if not self.set_password_form.is_valid():
             raise serializers.ValidationError(self.set_password_form.errors)
-            
+
         return attrs
 
     def save(self):
         self.set_password_form.save()
-    
-
-    
-
-     

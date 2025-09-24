@@ -13,8 +13,11 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 from pathlib import Path
 import os
 import dj_database_url
+import firebase_admin
+from firebase_admin import credentials
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 BASE_DIR = Path(__file__).resolve().parent.parent
+
 
 
 SECRET_KEY = os.environ.get(
@@ -150,3 +153,12 @@ FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
 
 allowed_hosts_str = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,studyratsfrontend.vercel.app')
 ALLOWED_HOSTS = [host.strip() for host in allowed_hosts_str.split(',')]
+#n8n
+N8N_WEBHOOK_SECRET = os.getenv('https://n8n-n8n-start.eswufe.easypanel.host/webhook-test/d3aadfb9-3482-428e-9b2f-6bab1d85c088')
+#firebase
+cred = credentials.Certificate(os.path.join(BASE_DIR, 'firebase-credentials.json'))
+firebase_admin.initialize_app(cred)
+GS_BUCKET_NAME = 'studyrats-7aafb.firebasestorage.app' 
+DEFAULT_FILE_STORAGE = 'storages.backends.gcloud.GoogleCloudStorage'
+GS_DEFAULT_ACL = 'publicRead' # Permite que os ficheiros sejam lidos publicamente
+os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = os.path.join(BASE_DIR, 'firebase-credentials.json')

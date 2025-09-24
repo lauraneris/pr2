@@ -1,14 +1,19 @@
 from django.urls import path
-from .views import EssayThemeListAPIView
-from .views import EssaySubmissionCreateAPIView
-from .views import HistoryListAPIView, HistoryDetailAPIView
-from .views import N8nCorrectionWebhookAPIView
-from .views import UserCreateAPIView
-from .views import ChangePasswordView
-from .views import PasswordResetRequestView, PasswordResetConfirmView #
-
+from .views import (
+    EssayThemeListAPIView,
+    EssaySubmissionCreateAPIView,
+    HistoryListAPIView, 
+    HistoryDetailAPIView,
+    N8nCorrectionWebhookAPIView,
+    UserCreateAPIView,
+    ChangePasswordView,
+    PasswordResetRequestView, 
+    PasswordResetConfirmView,
+    UserProfileDetailView 
+)
 
 urlpatterns = [
+    path('profile/me/', UserProfileDetailView.as_view(), name='user-profile-detail'),
     path('themes/', EssayThemeListAPIView.as_view(), name='theme-list'),
     path('submissions/', EssaySubmissionCreateAPIView.as_view(), name='submission-create'),
     path('history/', HistoryListAPIView.as_view(), name='history-list'),
