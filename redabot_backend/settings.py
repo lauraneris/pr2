@@ -15,10 +15,10 @@ import os
 import dj_database_url
 import firebase_admin
 from firebase_admin import credentials
+from dotenv import load_dotenv
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 BASE_DIR = Path(__file__).resolve().parent.parent
-
-
+load_dotenv(os.path.join(BASE_DIR, '.env.local'))
 
 SECRET_KEY = os.environ.get(
     'SECRET_KEY', 
@@ -79,8 +79,12 @@ WSGI_APPLICATION = 'redabot_backend.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': os.getenv('DB_NAME'),
+        'USER': os.getenv('DB_USER'),
+        'PASSWORD': os.getenv('DB_PASSWORD'),
+        'HOST': os.getenv('DB_HOST'),
+        'PORT': os.getenv('DB_PORT'),
     }
 }
 
