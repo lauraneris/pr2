@@ -9,7 +9,9 @@ from .views import (
     ChangePasswordView,
     PasswordResetRequestView, 
     PasswordResetConfirmView,
-    UserProfileDetailView 
+    UserProfileDetailView,
+    SubmissionLogCreateAPIView, 
+    SubmissionErrorAPIView,
 )
 
 urlpatterns = [
@@ -23,4 +25,7 @@ urlpatterns = [
     path('change-password/', ChangePasswordView.as_view(), name='change-password'),
     path('password-reset/', PasswordResetRequestView.as_view(), name='password-reset-request'),
     path('password-reset/confirm/', PasswordResetConfirmView.as_view(), name='password-reset-confirm'),
+    path('submissions/<int:submission_id>/log/', SubmissionLogCreateAPIView.as_view(), name='create_submission_log'),
+    path('submissions/<int:submission_id>/error/', SubmissionErrorAPIView.as_view(), name='submission_error'),
+    path('webhooks/n8n/correction/', N8nCorrectionWebhookAPIView.as_view(), name='n8n_correction_webhook'), # URL atualizada
 ]

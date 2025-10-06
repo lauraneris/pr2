@@ -10,6 +10,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from .serializers import PasswordResetRequestSerializer, PasswordResetConfirmSerializer
 from .models import EssaySubmission, EssayTheme, Correction, CorrectionCriterion
+from .models import SubmissionLog 
 from .serializers import (
     EssaySubmissionSerializer, 
     EssayThemeSerializer,
@@ -205,3 +206,44 @@ class UserProfileDetailView(generics.RetrieveAPIView):
 
     def get_object(self):
         return self.request.user
+    
+class SubmissionLogCreateAPIView(APIView):
+    permission_classes = [AllowAny] # Protegido pelo secret do N8n no header
+
+    def post(self, request, submission_id):
+        secret_token = request.headers.get('X-N8N-Api-Key')
+        if secret_token != settings.N8N_WEBHOOK_SECRET:
+            return Response({"error": "Acesso não autorizado."}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            submission = EssaySubmission.objects.get(id=submission_id)
+            SubmissionLog.objects.create(
+                submission=submission,
+                step=request.data.get('step', 'LOG'),
+                details=request.data.get('details', {})
+            )
+            return Response(status=status.HTTP_201_CREATED)
+        except EssaySubmission.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+class SubmissionErrorAPIView(APIView):
+    permission_classes = [AllowAny] 
+
+    def post(self, request, submission_id):
+        secret_token = request.headers.get('X-N8N-Api-Key')
+        if secret_token != settings.N8N_WEBHOOK_SECRET:
+            return Response({"error": "Acesso não autorizado."}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            submission = EssaySubmission.objects.get(id=submission_id)
+            submission.status = 'error'
+            submission.save()
+            
+            SubmissionLog.objects.create(
+                submission=submission,
+                step='N8N_WORKFLOW_ERROR',
+                details=request.data.get('details', {})
+            )
+            return Response(status=status.HTTP_200_OK)
+        except EssaySubmission.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)

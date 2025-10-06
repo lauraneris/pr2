@@ -84,3 +84,16 @@ class CorrectionCriterion(models.Model):
 
     def __str__(self):
         return f"{self.name} - {self.score}/{self.max_score}"
+    
+class SubmissionLog(models.Model):
+   
+    submission = models.ForeignKey(EssaySubmission, on_delete=models.CASCADE, related_name='logs')
+    timestamp = models.DateTimeField(auto_now_add=True)
+    step = models.CharField(max_length=100) # Ex: 'N8N_WORKFLOW_STARTED', 'CALLING_GEMINI'
+    details = models.JSONField(default=dict) # Para guardar metadados, como IDs ou mensagens de erro
+
+    def __str__(self):
+        return f"Log para Submissão {self.submission.id} em {self.timestamp}: {self.step}"
+
+    class Meta:
+        ordering = ['timestamp']

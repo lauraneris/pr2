@@ -78,13 +78,17 @@ WSGI_APPLICATION = 'redabot_backend.wsgi.application'
 
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': os.getenv('DB_NAME'),
-        'USER': os.getenv('DB_USER'),
-        'PASSWORD': os.getenv('DB_PASSWORD'),
-        'HOST': os.getenv('DB_HOST'),
-        'PORT': os.getenv('DB_PORT'),
+    "default": {
+        "ENGINE": "django.db.backends.mysql",
+        "NAME": "studyrats_db",
+        "USER": "studyrats_user",
+        "PASSWORD": "Stuart_DB@@2024",
+        "HOST": "127.0.0.1",   # importante: usar 127.0.0.1 para forçar TCP
+        "PORT": "3306",
+        "OPTIONS": {
+            "charset": "utf8mb4",
+            # "unix_socket": "/opt/homebrew/var/mysql/mysql.sock",  # use isto só se quiser socket
+        },
     }
 }
 
